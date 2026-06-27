@@ -1,0 +1,10 @@
+--- Tokenizer test ---
+আমি ভালো আছি।
+তুমি কেমন আছ?
+আজকে আবহাওয়া খুব সুন্দর।
+
+--- Normalizer test ---
+পরীক্ষা
+
+--- gTTS test ---
+test.mp3 created successfully
