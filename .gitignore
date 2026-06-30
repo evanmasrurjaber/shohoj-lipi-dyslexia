@@ -1,5 +1,45 @@
-backend/venv/
-   __pycache__/
-   *.pyc
-   *.mp3
-   .env
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+venv/
+.venv/
+env/
+
+# Environment / Secrets
+.env
+*.env
+
+# Large model files (host on HuggingFace Hub instead)
+models/
+*.onnx
+*.bin
+*.pt
+*.pth
+sentence_router_onnx.zip
+
+# Data files (too large for GitHub)
+data/
+
+# Notebook patch/helper scripts (dev tools, not needed by team)
+patch_fp16.py
+patch_notebook.py
+patch_progress.py
+patch_training_cell.py
+rebuild_notebook.py
+push_to_kaggle.py
+# Kaggle staging folder (already pushed via API)
+ml/kaggle_push/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
