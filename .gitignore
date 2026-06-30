@@ -24,7 +24,11 @@ models/
 sentence_router_onnx.zip
 
 # Data files (too large for GitHub)
-data/
+data/*
+!data/BengaliReadability/
+data/BengaliReadability/*
+!data/BengaliReadability/*.txt
+!data/evaluation_results.csv
 
 # Notebook patch/helper scripts (dev tools, not needed by team)
 patch_fp16.py

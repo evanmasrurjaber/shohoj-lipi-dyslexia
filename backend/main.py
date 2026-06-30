@@ -21,8 +21,17 @@ try:
     router = SentenceRouter()
     has_ml_router = True
 except Exception as e:
-    print(f"⚠️ ML Router not available: {e}. Using rule-based fallback.")
+    print(f"ML Router not available: {e}. Using rule-based fallback.")
     has_ml_router = False
+
+# Try to load the LLM Simplifier (requires GEMINI_API_KEY)
+try:
+    from ml.llm_simplifier import LLMSimplifier
+    llm = LLMSimplifier()
+    has_llm = True
+except Exception as e:
+    print(f"LLM Simplifier not available: {e}. Using mock fallback.")
+    has_llm = False
 
 app = FastAPI(title="Shohoj Lipi API")
 
@@ -43,8 +52,7 @@ class SimplifyResponse(BaseModel):
     sentences_processed: list
 
 def mock_llm_simplification(sentence: str) -> str:
-    """Mock simplification for local development without OpenAI key."""
-    # Just a silly rule-based mock for testing the UI
+    """Fallback mock simplification when no API key is set."""
     return sentence.replace("কৃষিনির্ভর", "কৃষি কাজ করে এমন").replace("অত্যন্ত", "খুবই")
 
 def route_and_simplify(text: str) -> dict:
@@ -69,8 +77,10 @@ def route_and_simplify(text: str) -> dict:
             
         # 2. Simplification
         if is_complex:
-            # In a real setup, we call GPT-4o-mini here
-            simplified = mock_llm_simplification(sent)
+            if has_llm:
+                simplified = llm.simplify_sentence(sent)
+            else:
+                simplified = mock_llm_simplification(sent)
             processed.append({
                 "original": sent,
                 "simplified": simplified,
@@ -118,4 +128,8 @@ async def simplify_text(req: SimplifyRequest):
 
 @app.get("/health")
 async def health_check():
-    return {"status": "ok", "ml_router_loaded": has_ml_router}
+    return {
+        "status": "ok",
+        "ml_router_loaded": has_ml_router,
+        "llm_loaded": has_llm,
+    }
