@@ -10,11 +10,15 @@ from optimum.onnxruntime import ORTModelForSequenceClassification
 from transformers import AutoTokenizer
 
 class SentenceRouter:
-    def __init__(self, model_dir: str = "zephrox/banglabert-sentence-router-onnx"):
+    def __init__(self, model_dir: str = "models/sentence_router_onnx"):
         """
-        Initialize the router with the ONNX model — either a local folder
-        or a Hugging Face Hub repo ID.
+        Initialize the router with the quantized ONNX model.
+        Falls back to HuggingFace Hub if local directory does not exist.
         """
+        if not os.path.exists(model_dir):
+            print(f"Local model directory not found at {model_dir}. Fetching from HuggingFace Hub instead...")
+            model_dir = "zephrox/banglabert-sentence-router-onnx"
+            
         print(f"Loading ONNX model from {model_dir}...")
         self.tokenizer = AutoTokenizer.from_pretrained(model_dir)
         self.model = ORTModelForSequenceClassification.from_pretrained(model_dir)
@@ -67,23 +71,6 @@ if __name__ == "__main__":
             res = router.classify(sent)
             print(f"Text: {sent}")
             print(f"Prediction: {res['label']} (Confidence: {res['score']:.4f})\n")
-
-        for sent in test_sentences:
-            res = router.classify(sent)
-            print(f"Text: {sent}")
-            print(f"Probabilities: {res['probabilities']}")
-
-        # Broader sanity check against known easy/hard passages
-        import csv
-        with open("data/eval_passages.csv", encoding="utf-8") as f:
-            rows = list(csv.DictReader(f))
-        easy_rows = [r for r in rows if r["intended_difficulty"].strip().lower() == "easy"][:10]
-        hard_rows = [r for r in rows if r["intended_difficulty"].strip().lower() == "hard"][:10]
-        for label, group in [("EASY", easy_rows), ("HARD", hard_rows)]:
-            print(f"\n--- {label} passages ---")
-            for r in group:
-                res = router.classify(r["text"][:60])
-                print(f"  {res['label']:8s} ({res['score']:.3f})  {r['text'][:40]}")
     except Exception as e:
         print(f"Could not initialize test: {e}")
         print("You must train and export the model first!")

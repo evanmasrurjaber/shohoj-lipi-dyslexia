@@ -31,11 +31,11 @@
   "bengali_readability": {
     "status": "OK",
     "path": "D:\\Shohoj-Lipi-Dyslexia\\shohoj-lipi-dyslexia\\data\\BengaliReadability",
-    "total_files": 265,
+    "total_files": 267,
     "file_types": {
       "": 3,
+      ".txt": 220,
       ".md": 1,
-      ".txt": 218,
       ".pkl": 3,
       ".csv": 4,
       ".py": 19,

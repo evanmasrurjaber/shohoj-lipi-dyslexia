@@ -163,7 +163,7 @@ WEIGHTS = {
     "rare_word_ratio": 0.25,
 }
 
-TIER_THRESHOLDS = (0.1712, 0.1740)   # auto-calibrated on 935 passages
+TIER_THRESHOLDS = (0.2383, 0.3210)   # auto-calibrated on 935 passages
 
 
 def compute_readability(text: str) -> dict:
