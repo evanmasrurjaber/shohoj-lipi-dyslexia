@@ -1,121 +1,83 @@
-"""
-backend/main.py — FastAPI Backend for Shohoj Lipi
-=================================================
-Core API that handles text simplification requests.
-"""
-
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
 import sys
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent))  # lets us import from ../ml
 
-# Add project root to path so we can import ml modules
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
+from dotenv import load_dotenv
+load_dotenv()
 
-from ml.readability_scorer import compute_readability, init_scorer, _bnlp_sentence_tokenize
+from simplify import simplify_text
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from bnlp import NLTKTokenizer
+import unicodedata
+import re
 
-# Try to load the Sentence Router (requires ONNX and trained model)
-try:
-    from ml.sentence_router import SentenceRouter
-    router = SentenceRouter()
-    has_ml_router = True
-except Exception as e:
-    print(f"⚠️ ML Router not available: {e}. Using rule-based fallback.")
-    has_ml_router = False
+from ml.readability_scorer import compute_readability, init_scorer
+from ml.sentence_router import SentenceRouter
+  # reads backend/.env, makes OPENAI_API_KEY available
 
-app = FastAPI(title="Shohoj Lipi API")
+app = FastAPI()
+tokenizer = NLTKTokenizer()
+router = None  # loaded once at startup, see below
 
-# Initialize static resources on startup
-@app.on_event("startup")
-async def startup_event():
-    init_scorer()
 
-class SimplifyRequest(BaseModel):
+class TextInput(BaseModel):
     text: str
-    target_tier: str = "Easy" # Easy, Medium
 
-class SimplifyResponse(BaseModel):
-    original_text: str
-    simplified_text: str
-    original_readability: dict
-    new_readability: dict
-    sentences_processed: list
 
-def mock_llm_simplification(sentence: str) -> str:
-    """Mock simplification for local development without OpenAI key."""
-    # Just a silly rule-based mock for testing the UI
-    return sentence.replace("কৃষিনির্ভর", "কৃষি কাজ করে এমন").replace("অত্যন্ত", "খুবই")
+def normalize_bangla(text: str) -> str:
+    return unicodedata.normalize("NFC", text)
 
-def route_and_simplify(text: str) -> dict:
-    sentences = _bnlp_sentence_tokenize(text)
-    processed = []
-    final_text_parts = []
-    
-    for sent in sentences:
-        if not sent.strip():
-            continue
-            
-        # 1. Routing
-        if has_ml_router:
-            route_res = router.classify(sent)
-            is_complex = (route_res["label"] == "Complex")
-            confidence = route_res["score"]
-        else:
-            # Fallback: longer sentences (>8 words) are "Complex"
-            from ml.cc_density import bangla_word_count
-            is_complex = len(bangla_word_count(sent)) > 8
-            confidence = 1.0
-            
-        # 2. Simplification
-        if is_complex:
-            # In a real setup, we call GPT-4o-mini here
-            simplified = mock_llm_simplification(sent)
-            processed.append({
-                "original": sent,
-                "simplified": simplified,
-                "was_complex": True,
-                "confidence": confidence
-            })
-            final_text_parts.append(simplified)
-        else:
-            processed.append({
-                "original": sent,
-                "simplified": sent,
-                "was_complex": False,
-                "confidence": confidence
-            })
-            final_text_parts.append(sent)
-            
-    final_text = " ".join(final_text_parts)
-    return {
-        "final_text": final_text,
-        "processed": processed
-    }
 
-@app.post("/api/simplify", response_model=SimplifyResponse)
-async def simplify_text(req: SimplifyRequest):
-    if not req.text.strip():
-        raise HTTPException(status_code=400, detail="Text cannot be empty.")
-        
-    # 1. Document Readability Before
-    doc_before = compute_readability(req.text)
-    
-    # 2. Sentence Routing & LLM
-    pipeline_result = route_and_simplify(req.text)
-    simplified_text = pipeline_result["final_text"]
-    
-    # 3. Document Readability After
-    doc_after = compute_readability(simplified_text)
-    
-    return SimplifyResponse(
-        original_text=req.text,
-        simplified_text=simplified_text,
-        original_readability=doc_before,
-        new_readability=doc_after,
-        sentences_processed=pipeline_result["processed"]
-    )
+def is_bangla_text(text: str) -> bool:
+    """Reject empty input or input with no Bangla characters at all."""
+    if not text or not text.strip():
+        return False
+    return bool(re.search(r'[\u0980-\u09FF]', text))
+
+
+@app.on_event("startup")
+def load_models():
+    """Runs once when the server starts — loads the readability scorer's
+    word lists and the sentence router model, so requests don't pay that
+    cost on every call."""
+    global router
+    print("Loading readability scorer resources...")
+    init_scorer()
+    print("Loading sentence router model...")
+    router = SentenceRouter()
+    print("Startup complete.")
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # tighten this to the real Vercel URL on Day 6
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 @app.get("/health")
-async def health_check():
-    return {"status": "ok", "ml_router_loaded": has_ml_router}
+def health():
+    return {"status": "ok"}
+
+
+@app.post("/classify")
+def classify(input: TextInput):
+    if not is_bangla_text(input.text):
+        raise HTTPException(status_code=400, detail="Input must be non-empty Bangla text")
+
+    text = normalize_bangla(input.text)
+    result = compute_readability(text)
+    return result
+
+
+@app.post("/simplify")
+def simplify(input: TextInput):
+    if not is_bangla_text(input.text):
+        raise HTTPException(status_code=400, detail="Input must be non-empty Bangla text")
+
+    text = normalize_bangla(input.text)
+    result = simplify_text(text, tokenizer, router)
+    return result

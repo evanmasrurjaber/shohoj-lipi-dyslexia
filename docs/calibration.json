@@ -1,25 +1,25 @@
 {
-  "easy_medium_threshold": 0.2364,
-  "medium_hard_threshold": 0.321,
-  "calibration_accuracy": 0.5048,
+  "easy_medium_threshold": 0.1712,
+  "medium_hard_threshold": 0.174,
+  "calibration_accuracy": 0.5444,
   "n_passages": 935,
   "score_stats": {
     "Easy": {
-      "min": 0.1508,
-      "median": 0.2364,
-      "max": 0.3812,
+      "min": 0.068,
+      "median": 0.1322,
+      "max": 0.2616,
       "n": 101
     },
     "Medium": {
-      "min": 0.1409,
-      "median": 0.2814,
-      "max": 0.5401,
+      "min": 0.0788,
+      "median": 0.1811,
+      "max": 0.4193,
       "n": 266
     },
     "Hard": {
-      "min": 0.1262,
-      "median": 0.321,
-      "max": 0.6702,
+      "min": 0.0637,
+      "median": 0.2085,
+      "max": 0.488,
       "n": 568
     }
   }

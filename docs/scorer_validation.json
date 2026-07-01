@@ -1,43 +1,42 @@
 {
   "total_passages": 935,
-  "correct": 472,
-  "accuracy": 0.5048,
+  "correct": 509,
+  "accuracy": 0.5444,
   "verdict": "❌ POOR — Recalibrate or use BanglaBERT doc classifier",
   "per_class_metrics": {
     "Easy": {
-      "precision": 0.347,
-      "recall": 0.505,
-      "f1": 0.411,
+      "precision": 0.235,
+      "recall": 0.752,
+      "f1": 0.358,
       "support": 101
     },
     "Medium": {
-      "precision": 0.319,
-      "recall": 0.519,
-      "f1": 0.395,
+      "precision": 0.444,
+      "recall": 0.03,
+      "f1": 0.056,
       "support": 266
     },
     "Hard": {
-      "precision": 0.797,
-      "recall": 0.498,
-      "f1": 0.613,
+      "precision": 0.715,
+      "recall": 0.748,
+      "f1": 0.731,
       "support": 568
     }
   },
   "confusion_matrix": {
     "Easy": {
-      "Easy": 51,
-      "Medium": 41,
-      "Hard": 9
+      "Easy": 76,
+      "Hard": 25
     },
     "Medium": {
-      "Medium": 138,
-      "Easy": 65,
-      "Hard": 63
+      "Hard": 144,
+      "Easy": 114,
+      "Medium": 8
     },
     "Hard": {
-      "Hard": 283,
-      "Medium": 254,
-      "Easy": 31
+      "Hard": 425,
+      "Easy": 133,
+      "Medium": 10
     }
   }
 }

@@ -1,7 +1,7 @@
 {
   "eval_passages": {
     "status": "OK",
-    "path": "C:\\Users\\zephrox\\Desktop\\projects\\Personal projects\\shohoj-lipi-dyslexia\\data\\eval_passages.csv",
+    "path": "D:\\Shohoj-Lipi-Dyslexia\\shohoj-lipi-dyslexia\\data\\eval_passages.csv",
     "total_passages": 935,
     "difficulty_dist": {
       "easy": 101,
@@ -30,27 +30,35 @@
   },
   "bengali_readability": {
     "status": "OK",
-    "path": "C:\\Users\\zephrox\\Desktop\\projects\\Personal projects\\shohoj-lipi-dyslexia\\data\\BengaliReadability",
-    "total_files": 2,
+    "path": "D:\\Shohoj-Lipi-Dyslexia\\shohoj-lipi-dyslexia\\data\\BengaliReadability",
+    "total_files": 265,
     "file_types": {
-      ".txt": 2
+      "": 3,
+      ".md": 1,
+      ".txt": 218,
+      ".pkl": 3,
+      ".csv": 4,
+      ".py": 19,
+      ".sample": 14,
+      ".idx": 1,
+      ".pack": 1,
+      ".rev": 1
     },
     "expected_assets": {
       "easy_word_list": true,
       "conjunct_list": true,
-      "pronunciation": false,
+      "pronunciation": true,
       "sentence_corpus": false,
       "document_corpus": false
     },
     "all_missing": [
-      "pronunciation",
       "sentence_corpus",
       "document_corpus"
     ]
   },
   "nctb_raw": {
     "status": "OK",
-    "path": "C:\\Users\\zephrox\\Desktop\\projects\\Personal projects\\shohoj-lipi-dyslexia\\data\\raw\\nctb_by_class",
+    "path": "D:\\Shohoj-Lipi-Dyslexia\\shohoj-lipi-dyslexia\\data\\raw\\nctb_by_class",
     "class_dirs": 10,
     "total_approx_mb": 3.41,
     "classes": {
@@ -133,16 +141,16 @@
     }
   },
   "python_env": {
-    "bnlp-toolkit": "❌ missing",
-    "transformers": "❌ missing",
-    "torch": "❌ missing",
-    "datasets": "❌ missing",
+    "bnlp-toolkit": "✅ installed",
+    "transformers": "✅ installed",
+    "torch": "✅ installed",
+    "datasets": "✅ installed",
     "scikit-learn": "✅ installed",
     "bert-score": "❌ missing",
-    "onnxruntime": "❌ missing",
-    "openai": "❌ missing",
-    "fastapi": "❌ missing",
-    "gtts": "❌ missing",
+    "onnxruntime": "✅ installed",
+    "openai": "✅ installed",
+    "fastapi": "✅ installed",
+    "gtts": "✅ installed",
     "unicodedata": "✅ installed"
   }
 }
