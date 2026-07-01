@@ -24,7 +24,11 @@ models/
 sentence_router_onnx.zip
 
 # Data files (too large for GitHub)
-data/
+data/*
+!data/BengaliReadability/
+data/BengaliReadability/*
+!data/BengaliReadability/*.txt
+!data/evaluation_results.csv
 
 # Notebook patch/helper scripts (dev tools, not needed by team)
 patch_fp16.py
@@ -43,3 +47,20 @@ ml/kaggle_push/
 # OS
 .DS_Store
 Thumbs.db
+
+# Temporary test/debug scripts
+test_llm.py
+test_label_mapping.py
+debug_predictions.py
+check_eval_classes.py
+check_csv_distribution.py
+test_normalizer_effect.py
+test_custom_sentences.py
+test_pipeline.py
+test_edge_cases.py
+upload_to_hf.py
+model_card.md
+evaluate.py
+sentence_router.py
+router_test_output.txt
+*_test_output.txt

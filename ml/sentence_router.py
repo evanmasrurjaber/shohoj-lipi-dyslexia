@@ -13,9 +13,11 @@ class SentenceRouter:
     def __init__(self, model_dir: str = "models/sentence_router_onnx"):
         """
         Initialize the router with the quantized ONNX model.
+        Falls back to HuggingFace Hub if local directory does not exist.
         """
         if not os.path.exists(model_dir):
-            raise FileNotFoundError(f"Model directory not found at {model_dir}. Please run export_onnx.py first.")
+            print(f"Local model directory not found at {model_dir}. Fetching from HuggingFace Hub instead...")
+            model_dir = "zephrox/banglabert-sentence-router-onnx"
             
         print(f"Loading ONNX model from {model_dir}...")
         self.tokenizer = AutoTokenizer.from_pretrained(model_dir)
