@@ -14,7 +14,7 @@ setup and model name differ from a stock OpenAI integration.
 
 import os
 from openai import OpenAI
-from ml.readability_scorer import EASY_WORDS
+from ml import readability_scorer  # pylint: disable=import-error,wrong-import-position
 
 client = OpenAI(
     api_key=os.getenv("OPENROUTER_API_KEY"),
@@ -45,8 +45,9 @@ Return ONLY the simplified Bangla text. No explanations, no English.
 
 
 def build_system_prompt() -> str:
+    print(f"Easy words loaded: {len(readability_scorer.EASY_WORDS)}")
     # EASY_WORDS is populated by init_scorer() at startup, in main.py
-    sample = list(EASY_WORDS)[:500] if EASY_WORDS else []
+    sample = list(readability_scorer.EASY_WORDS)[:500] if readability_scorer.EASY_WORDS else []
     words_str = "、".join(sample) if sample else "(word list not loaded)"
     return SYSTEM_PROMPT_TEMPLATE.format(easy_words=words_str)
 
