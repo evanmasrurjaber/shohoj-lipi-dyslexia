@@ -4,7 +4,7 @@ import ControlPanel from './components/ControlPanel';
 import OutputPanel from './components/OutputPanel';
 
 // Backend base URL — Member C's FastAPI server
-const API_BASE = 'http://localhost:8000';
+const API_BASE = 'http://localhost:8001';
 
 function App() {
   // F6: Font & Layout Controls — React state → CSS custom properties
