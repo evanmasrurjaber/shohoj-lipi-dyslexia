@@ -1,90 +1,152 @@
 """
-simplify.py — LLM-based sentence simplification, wired to the sentence router.
+simplify.py — LLM-based sentence simplification via Gemini API.
 
 Flow per input text:
   1. Split into sentences
   2. Classify each sentence: Simple → leave unchanged, Complex → send to LLM
   3. Reassemble and return
 
-NOTE: This uses OpenRouter (https://openrouter.ai) instead of OpenAI directly,
-so we can use a free-tier model. It's still the OpenAI SDK under the hood —
-OpenRouter just exposes an OpenAI-compatible endpoint, so only the client
-setup and model name differ from a stock OpenAI integration.
+Uses google-genai SDK with gemini-2.0-flash (free tier, fast, great Bangla support).
 """
 
 import os
-import time
-from openai import OpenAI, RateLimitError
+import re
+from google import genai
+from google.genai import types
 from ml import readability_scorer  # pylint: disable=import-error,wrong-import-position
 
-client = OpenAI(
-    api_key=os.getenv("OPENROUTER_API_KEY"),
-    base_url="https://openrouter.ai/api/v1",
-)
+# ── Lazy Gemini client ────────────────────────────────────────────────────
+# Created on first use so GEMINI_API_KEY is read AFTER load_dotenv() runs.
+_client = None
 
-# Free-tier model on OpenRouter. Check https://openrouter.ai/models?max_price=0
-# for the current list — free models get added/removed/renamed over time.
-MODEL_NAME = "openrouter/free"
+def get_client() -> genai.Client:
+    global _client
+    if _client is None:
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key or api_key == "your_gemini_api_key_here":
+            raise RuntimeError(
+                "GEMINI_API_KEY is not set. "
+                "Get a free key at https://aistudio.google.com/apikey "
+                "and add it to backend/.env"
+            )
+        _client = genai.Client(api_key=api_key)
+        print("[LLM] Gemini client initialized.")
+    return _client
 
-SYSTEM_PROMPT_TEMPLATE = """You are a Bangla reading accessibility expert. You simplify Bangla text for children with dyslexia (ages 6-14).
+
+MODEL_NAME = "gemini-3.5-flash"
+
+SYSTEM_PROMPT = """You are a Bangla reading accessibility expert. You simplify Bangla text for children with dyslexia (ages 6-14).
 
 RULES:
 1. Break long sentences into 2-3 shorter ones (max 12 words per sentence)
 2. Replace conjunct consonants (যুক্তবর্ণ) with simpler alternatives when possible
-   e.g., "বিদ্যালয়" -> "স্কুল", "পুস্তক" -> "বই"
-3. Prefer words from the easy-word list provided below
-4. Preserve ALL factual meaning -- never add or remove information
+   e.g., "বিদ্যালয়" -> "স্কুল", "পুস্তক" -> "বই", "অধ্যয়ন" -> "পড়া"
+3. Prefer shorter, everyday Bangla words over formal literary ones
+4. Preserve ALL factual meaning — never add or remove information
 5. Keep the same paragraph structure
 6. If a word has no simpler alternative, keep it unchanged
 
-EASY-WORD LIST (use these when possible):
+EASY-WORD SUBSTITUTIONS (use these when applicable):
 {easy_words}
 
 OUTPUT FORMAT:
-Return ONLY the simplified Bangla text. No explanations, no English.
-"""
+Return ONLY the simplified Bangla text. No explanations, no English, no markdown, no bullet points, no arrows, no substitution lists."""
 
 
 def build_system_prompt() -> str:
-    print(f"Easy words loaded: {len(readability_scorer.EASY_WORDS)}")
-    # EASY_WORDS is populated by init_scorer() at startup, in main.py
+    """Build prompt with the easy-word list loaded at startup."""
     sample = list(readability_scorer.EASY_WORDS)[:500] if readability_scorer.EASY_WORDS else []
     words_str = "、".join(sample) if sample else "(word list not loaded)"
-    return SYSTEM_PROMPT_TEMPLATE.format(easy_words=words_str)
+    return SYSTEM_PROMPT.format(easy_words=words_str)
 
 
-def simplify_sentence_with_llm(sentence: str, max_retries: int = 3) -> str:
+def _clean_llm_response(raw: str) -> str:
+    """
+    Strip any leaked reasoning, English text, formatting symbols, or
+    substitution-list lines from the LLM response.
+    Only keeps lines that look like actual Bangla output.
+    """
+    cleaned_lines = []
+    for line in raw.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        # Skip lines containing English letters (leaked reasoning)
+        if re.search(r'[a-zA-Z]', line):
+            continue
+        # Skip lines with formatting/reasoning symbols
+        if any(sym in line for sym in ['->', '=>', '*', '•', ':', '(', ')']):
+            continue
+        # Skip lines that look like bullet points or numbered lists
+        if re.match(r'^[\d]+[\.।]', line):
+            continue
+        # Must contain at least one Bangla character to be kept
+        if not re.search(r'[\u0980-\u09FF]', line):
+            continue
+        cleaned_lines.append(line)
+
+    return ' '.join(cleaned_lines).strip()
+
+
+def simplify_sentence_with_llm(sentence: str, max_retries: int = 2) -> str:
+    """
+    Send a single complex Bangla sentence to Gemini for simplification.
+    Falls back to the original sentence on any error.
+    """
+    import time
     system_prompt = build_system_prompt()
-    user_prompt = f"Simplify this Bangla text:\n---\n{sentence}\n---"
+    user_prompt = (
+        "Simplify the following Bangla text for a child with dyslexia. "
+        "Output ONLY the simplified Bangla sentences. "
+        "Do NOT include any English, arrows, substitution lists, or explanations.\n"
+        f"---\n{sentence}\n---"
+    )
 
-    for attempt in range(max_retries):
+    for attempt in range(max_retries + 1):
         try:
-            response = client.chat.completions.create(
+            response = get_client().models.generate_content(
                 model=MODEL_NAME,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
-                temperature=0.3,
+                contents=user_prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_prompt,
+                    temperature=0.3,
+                    max_output_tokens=1024,
+                ),
             )
-            return response.choices[0].message.content.strip()
-        except RateLimitError:
-            wait_time = 2 ** attempt  # 1s, then 2s, then 4s
-            print(f"Rate limited, retrying in {wait_time}s (attempt {attempt + 1}/{max_retries})...")
-            time.sleep(wait_time)
+            raw = response.text.strip()
+            result = _clean_llm_response(raw)
 
-    print(f"Still rate-limited after {max_retries} retries -- returning original sentence unchanged.")
-    return sentence
+            # Guard: must contain Bangla characters, otherwise fall back
+            if result and any('\u0980' <= c <= '\u09FF' for c in result):
+                print(f"[LLM] OK (attempt {attempt+1}) — {len(result)} chars")
+                return result
+
+            print(f"[LLM] Response had no usable Bangla after cleaning — returning original")
+            print(f"[LLM] Raw response was: {raw[:200]}")
+            return sentence
+
+        except Exception as e:
+            err = str(e)
+            if attempt < max_retries:
+                wait = 1.5 * (attempt + 1)
+                print(f"[LLM] Error attempt {attempt+1}: {err[:80]}. Retrying in {wait:.1f}s...")
+                time.sleep(wait)
+            else:
+                print(f"[LLM] Failed after {max_retries+1} attempts: {err[:120]}")
+                return sentence  # always return something
 
 
 def simplify_text(text: str, tokenizer, router) -> dict:
     """
-    Splits text into sentences, routes each one through the BanglaBERT
-    Simple/Complex classifier, sends only Complex sentences to the LLM,
-    and reassembles the result.
+    Splits text into sentences, routes each through the sentence router,
+    sends only Complex sentences to Gemini, and reassembles the result.
 
-    Returns a dict with the simplified text plus a per-sentence breakdown
-    (useful for debugging and for Member B's diff-highlight stretch feature later).
+    Returns:
+        {
+            "simplified_text": str,
+            "sentence_breakdown": list[dict]  — per-sentence details
+        }
     """
     sentences = tokenizer.sentence_tokenize(text)
     breakdown = []
@@ -105,14 +167,14 @@ def simplify_text(text: str, tokenizer, router) -> dict:
 
         output_sentences.append(simplified)
         breakdown.append({
-            "original": sent,
-            "label": label,
+            "original":   sent,
+            "label":      label,
             "confidence": route_result["score"],
             "simplified": simplified,
         })
 
     simplified_text = " ".join(output_sentences)
     return {
-        "simplified_text": simplified_text,
+        "simplified_text":    simplified_text,
         "sentence_breakdown": breakdown,
     }
