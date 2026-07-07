@@ -66,6 +66,10 @@ app.add_middleware(
 @app.on_event("startup")
 def load_models():
     global router
+    import nltk
+    print("Downloading NLTK data (punkt_tab)...")
+    nltk.download("punkt_tab", quiet=True)
+    nltk.download("punkt", quiet=True)
     print("Loading readability scorer resources...")
     init_scorer()
     print("Loading sentence router model...")

@@ -10,8 +10,8 @@ bnlp-toolkit==4.0.0
 optimum[onnxruntime]==1.23.3
 transformers==4.46.3
 
-# LLM via OpenRouter (OpenAI-compatible)
-openai==1.57.4
+# LLM — Gemini API (free tier via Google AI Studio)
+google-genai>=1.0.0
 
 # Text-to-Speech
 gtts==2.5.4
