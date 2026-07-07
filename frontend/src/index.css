@@ -2,9 +2,50 @@
 @tailwind components;
 @tailwind utilities;
 
+/* SiyamRupali font — F5: Accessible Rendered Output */
 @font-face {
   font-family: 'SiyamRupali';
-  src: url('/fonts/SiyamRupali.ttf') format('truetype');
+  src: url('/fonts/Siyamrupali.ttf') format('truetype');
   font-weight: normal;
   font-style: normal;
+  font-display: swap;
+}
+
+/* CSS custom properties wired to React state — F6: Font & Layout Controls */
+:root {
+  --font-size: 20px;
+  --line-height: 1.8;
+  --word-spacing: 0.2em;
+  --letter-spacing: 0.02em;
+}
+
+/* dyslexia-body class — F5 spec */
+.dyslexia-body {
+  font-family: 'SiyamRupali', 'Nirmala UI', sans-serif;
+  font-size: var(--font-size);
+  line-height: var(--line-height);
+  letter-spacing: var(--letter-spacing);
+  word-spacing: var(--word-spacing);
+}
+
+/* Syllable dot styling — F5 stretch: syllable-boundary dots */
+.syllable-dot {
+  color: #9ca3af;
+  font-size: 0.6em;
+  line-height: 0;
+  vertical-align: middle;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* Diff highlight — changed words in light amber */
+.diff-changed {
+  background-color: #fef3c7;
+  border-radius: 2px;
+  padding: 0 2px;
+}
+
+/* Alternating line tint — even:bg-blue-50 per spec */
+.line-shade-even:nth-child(even) {
+  background-color: #eff6ff;
 }
