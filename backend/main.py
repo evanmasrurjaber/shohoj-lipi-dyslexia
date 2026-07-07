@@ -1,9 +1,10 @@
 import sys
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))  # root → allows `from ml.xxx import yyy`
+sys.path.insert(0, str(Path(__file__).parent))          # backend/ → allows `from simplify import ...`
 
 from dotenv import load_dotenv
-load_dotenv()
+load_dotenv(dotenv_path=Path(__file__).parent / ".env")
 
 from functools import lru_cache
 from simplify import simplify_text
@@ -18,8 +19,10 @@ from ml.syllabifier import syllabify_text, init_syllabifier  # pylint: disable=i
 from ml.readability_scorer import compute_readability, init_scorer  # pylint: disable=import-error,wrong-import-position
 from ml.sentence_router import SentenceRouter  # pylint: disable=import-error,wrong-import-position
 
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.requests import Request
+from gtts import gTTS
+import io
 
 # ✅ app is created FIRST before anything uses it
 app = FastAPI()
@@ -63,6 +66,10 @@ app.add_middleware(
 @app.on_event("startup")
 def load_models():
     global router
+    import nltk
+    print("Downloading NLTK data (punkt_tab)...")
+    nltk.download("punkt_tab", quiet=True)
+    nltk.download("punkt", quiet=True)
     print("Loading readability scorer resources...")
     init_scorer()
     print("Loading sentence router model...")
@@ -124,3 +131,25 @@ def syllabify(input: TextInput):
         raise HTTPException(status_code=400, detail="Input must be non-empty Bangla text")
     text = normalize_bangla(input.text)
     return {"syllabified_text": syllabify_text(text)}
+
+
+@app.post("/tts")
+def tts(input: TextInput):
+    """Convert simplified Bangla text to speech using gTTS.
+    Returns an MP3 audio stream for the frontend TTS play button (F7).
+    """
+    if not is_bangla_text(input.text):
+        raise HTTPException(status_code=400, detail="Input must be non-empty Bangla text")
+    text = normalize_bangla(input.text)
+    try:
+        tts_obj = gTTS(text=text, lang="bn", slow=False)
+        audio_buffer = io.BytesIO()
+        tts_obj.write_to_fp(audio_buffer)
+        audio_buffer.seek(0)
+        return StreamingResponse(
+            audio_buffer,
+            media_type="audio/mpeg",
+            headers={"Content-Disposition": "inline; filename=tts.mp3"},
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"TTS generation failed: {e}") from e

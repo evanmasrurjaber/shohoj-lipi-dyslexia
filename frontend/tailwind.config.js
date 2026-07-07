@@ -6,22 +6,26 @@ export default {
   ],
   theme: {
     extend: {
+      // fontFamily.bangla — per Day 2 spec
       fontFamily: {
-        bangla: ['SiyamRupali', 'sans-serif'], // fontFamily.bangla
+        bangla: ['SiyamRupali', 'Nirmala UI', 'sans-serif'],
       },
+      // lineHeight.reading (1.8) — per Day 2 spec
       lineHeight: {
-        reading: '1.8', // lineHeight.reading (1.8)
+        reading: '1.8',
       },
+      // letterSpacing.bangla (0.02em) — per Day 2 spec
       letterSpacing: {
-        bangla: '0.02em', // letterSpacing.bangla (0.02em)
+        bangla: '0.02em',
       },
       colors: {
-        navy: '#000080', // Adding navy for the button hover state[cite: 3]
-      }
+        // navy for button hover state — per Day 2 spec
+        navy: '#000080',
+      },
     },
   },
   plugins: [
-    // wordSpacing utility via plugin[cite: 3]
+    // wordSpacing utility via plugin — per Day 2 spec
     function ({ addUtilities }) {
       const newUtilities = {
         '.word-spacing-wide': {
