@@ -13,7 +13,8 @@ setup and model name differ from a stock OpenAI integration.
 """
 
 import os
-from openai import OpenAI
+import time
+from openai import OpenAI, RateLimitError
 from ml import readability_scorer  # pylint: disable=import-error,wrong-import-position
 
 client = OpenAI(
@@ -23,7 +24,7 @@ client = OpenAI(
 
 # Free-tier model on OpenRouter. Check https://openrouter.ai/models?max_price=0
 # for the current list — free models get added/removed/renamed over time.
-MODEL_NAME = "openai/gpt-oss-20b:free"
+MODEL_NAME = "openrouter/free"
 
 SYSTEM_PROMPT_TEMPLATE = """You are a Bangla reading accessibility expert. You simplify Bangla text for children with dyslexia (ages 6-14).
 
@@ -52,19 +53,28 @@ def build_system_prompt() -> str:
     return SYSTEM_PROMPT_TEMPLATE.format(easy_words=words_str)
 
 
-def simplify_sentence_with_llm(sentence: str) -> str:
+def simplify_sentence_with_llm(sentence: str, max_retries: int = 3) -> str:
     system_prompt = build_system_prompt()
     user_prompt = f"Simplify this Bangla text:\n---\n{sentence}\n---"
 
-    response = client.chat.completions.create(
-        model=MODEL_NAME,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
-        temperature=0.3,
-    )
-    return response.choices[0].message.content.strip()
+    for attempt in range(max_retries):
+        try:
+            response = client.chat.completions.create(
+                model=MODEL_NAME,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                temperature=0.3,
+            )
+            return response.choices[0].message.content.strip()
+        except RateLimitError:
+            wait_time = 2 ** attempt  # 1s, then 2s, then 4s
+            print(f"Rate limited, retrying in {wait_time}s (attempt {attempt + 1}/{max_retries})...")
+            time.sleep(wait_time)
+
+    print(f"Still rate-limited after {max_retries} retries -- returning original sentence unchanged.")
+    return sentence
 
 
 def simplify_text(text: str, tokenizer, router) -> dict:
