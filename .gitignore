@@ -65,3 +65,9 @@ evaluate.py
 sentence_router.py
 router_test_output.txt
 *_test_output.txt
+backend/venv/
+   __pycache__/
+   *.pyc
+   *.mp3
+   .env
+   Sohoj_Lipi_Execution_Plan.pdf
