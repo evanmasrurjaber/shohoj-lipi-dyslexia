@@ -3,8 +3,8 @@ import InputPanel from './components/InputPanel';
 import ControlPanel from './components/ControlPanel';
 import OutputPanel from './components/OutputPanel';
 
-// Backend base URL — Member C's FastAPI server
-const API_BASE = 'http://localhost:8001';
+// Read backend URL from env, fallback to localhost for development
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8001';
 
 function App() {
   // Cooldown state
