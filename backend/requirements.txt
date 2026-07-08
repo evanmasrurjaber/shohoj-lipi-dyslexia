@@ -7,8 +7,6 @@ uvicorn[standard]==0.32.1
 
 # NLP / ML
 bnlp-toolkit==4.0.0
-optimum[onnxruntime]==1.23.3
-transformers==4.46.3
 
 # LLM — Gemini API (free tier via Google AI Studio)
 google-genai>=1.0.0
