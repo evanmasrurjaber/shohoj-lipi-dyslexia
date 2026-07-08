@@ -54,9 +54,27 @@ def is_bangla_text(text: str) -> bool:
 @app.exception_handler(Exception)
 async def generic_exception_handler(request: Request, exc: Exception):
     print(f"[UNHANDLED ERROR] {request.url.path}: {exc}")
+    
+    # Provide specific error descriptions based on what failed
+    path = request.url.path
+    exc_msg = str(exc)
+    
+    if "Gemini API" in exc_msg or "google" in exc_msg.lower() or "genai" in exc_msg.lower():
+        detail_msg = f"Gemini API Error: {exc_msg}"
+    elif path == "/classify" or "readability" in exc_msg.lower() or "cc_density" in exc_msg.lower():
+        detail_msg = f"Difficulty Scoring Model Error: {exc_msg}"
+    elif path == "/process":
+        # /process runs both simplification (Gemini) and difficulty scoring
+        if "Gemini API" in exc_msg or "google" in exc_msg.lower() or "genai" in exc_msg.lower():
+            detail_msg = f"Gemini API Error during simplification: {exc_msg}"
+        else:
+            detail_msg = f"Difficulty Scoring Error during evaluation: {exc_msg}"
+    else:
+        detail_msg = f"Internal Server Error ({path}): {exc_msg}"
+
     return JSONResponse(
         status_code=500,
-        content={"detail": "Something went wrong processing your request. Please try again."},
+        content={"detail": detail_msg},
     )
 
 
