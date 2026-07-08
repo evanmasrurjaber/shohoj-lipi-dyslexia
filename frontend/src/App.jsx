@@ -98,7 +98,7 @@ function App() {
       console.error('API Error:', error);
       // Show a real error — not mock data that hides the problem
       setResult({
-        error: 'Cannot reach the backend server. Make sure it is running on port 8001.\n' +
+        error: `Cannot reach the backend server at ${API_BASE}.\n` +
                `(${error?.message || error})`,
       });
     }

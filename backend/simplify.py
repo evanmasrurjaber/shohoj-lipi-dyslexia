@@ -134,7 +134,7 @@ def simplify_sentence_with_llm(sentence: str, max_retries: int = 2) -> str:
                 time.sleep(wait)
             else:
                 print(f"[LLM] Failed after {max_retries+1} attempts: {err[:120]}")
-                return sentence  # always return something
+                raise RuntimeError(f"Gemini API call failed: {err}")
 
 
 def simplify_text(text: str, tokenizer, router) -> dict:
