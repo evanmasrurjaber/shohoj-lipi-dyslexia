@@ -23,6 +23,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.requests import Request
 from gtts import gTTS
 import io
+import asyncio
 
 print("[main] Starting global imports...")
 
@@ -30,6 +31,7 @@ print("[main] Starting global imports...")
 app = FastAPI()
 tokenizer = None
 router = None
+models_loaded = False
 
 print("[main] Global scope initialized. Waiting for Uvicorn startup hook...")
 
@@ -67,9 +69,8 @@ app.add_middleware(
 )
 
 
-@app.on_event("startup")
-def load_models():
-    global router, tokenizer
+def load_models_sync():
+    global router, tokenizer, models_loaded
     import nltk
     from bnlp import NLTKTokenizer
     print("Downloading NLTK data (punkt_tab)...")
@@ -84,6 +85,22 @@ def load_models():
     print("Loading pronunciation dictionary...")
     init_syllabifier()
     print("Startup complete.")
+    models_loaded = True
+
+
+@app.on_event("startup")
+def startup_event():
+    # Run heavy initialization in the background so Uvicorn startup doesn't block HF health checks
+    loop = asyncio.get_event_loop()
+    loop.run_in_executor(None, load_models_sync)
+
+
+def check_models_ready():
+    if not models_loaded:
+        raise HTTPException(
+            status_code=503,
+            detail="Models are still loading in the background. Please try again in a few seconds."
+        )
 
 
 @app.get("/health")
@@ -93,6 +110,7 @@ def health():
 
 @app.post("/classify")
 def classify(input: TextInput):
+    check_models_ready()
     if not is_bangla_text(input.text):
         raise HTTPException(status_code=400, detail="Input must be non-empty Bangla text")
     text = normalize_bangla(input.text)
@@ -102,6 +120,7 @@ def classify(input: TextInput):
 
 @app.post("/simplify")
 def simplify(input: TextInput):
+    check_models_ready()
     if not is_bangla_text(input.text):
         raise HTTPException(status_code=400, detail="Input must be non-empty Bangla text")
     text = normalize_bangla(input.text)
@@ -126,6 +145,7 @@ def _process_cached(normalized_text: str) -> dict:
 
 @app.post("/process")
 def process(input: TextInput):
+    check_models_ready()
     if not is_bangla_text(input.text):
         raise HTTPException(status_code=400, detail="Input must be non-empty Bangla text")
     text = normalize_bangla(input.text)
@@ -134,6 +154,7 @@ def process(input: TextInput):
 
 @app.post("/syllabify")
 def syllabify(input: TextInput):
+    check_models_ready()
     if not is_bangla_text(input.text):
         raise HTTPException(status_code=400, detail="Input must be non-empty Bangla text")
     text = normalize_bangla(input.text)
@@ -145,6 +166,7 @@ def tts(input: TextInput):
     """Convert simplified Bangla text to speech using gTTS.
     Returns an MP3 audio stream for the frontend TTS play button (F7).
     """
+    check_models_ready()
     if not is_bangla_text(input.text):
         raise HTTPException(status_code=400, detail="Input must be non-empty Bangla text")
     text = normalize_bangla(input.text)
