@@ -68,7 +68,7 @@ function renderTextWithDiff(simplifiedText, originalText, lineShade, syllabified
   });
 }
 
-export default function OutputPanel({ result, lineShade, syllableDots, onTTS }) {
+export default function OutputPanel({ result, lineShade, syllableDots, onTTS, onTTSStop }) {
   const [copied, setCopied] = useState(false);
   const [ttsPlaying, setTtsPlaying] = useState(false);
 
@@ -95,14 +95,25 @@ export default function OutputPanel({ result, lineShade, syllableDots, onTTS }) 
     URL.revokeObjectURL(url);
   }, [result]);
 
-  // F7: TTS play with simple playing state indicator
+  // F7: TTS play — awaits the audio object and listens to onended for accurate state
   const handleTTSClick = useCallback(async () => {
     if (ttsPlaying) return;
     setTtsPlaying(true);
-    await onTTS();
-    // Reset after ~5s (approximate; real audio.onended would require audio ref passed up)
-    setTimeout(() => setTtsPlaying(false), 5000);
+    const audio = await onTTS();
+    if (audio) {
+      audio.onended = () => setTtsPlaying(false);
+      audio.onerror = () => setTtsPlaying(false);
+    } else {
+      // onTTS failed or returned nothing — reset immediately
+      setTtsPlaying(false);
+    }
   }, [onTTS, ttsPlaying]);
+
+  // F7: TTS stop
+  const handleTTSStop = useCallback(() => {
+    onTTSStop?.();
+    setTtsPlaying(false);
+  }, [onTTSStop]);
 
   // Score delta display — Day 4 spec: 'Difficulty reduced from Grade X → Grade Y'
   const getScoreDelta = () => {
@@ -125,24 +136,30 @@ export default function OutputPanel({ result, lineShade, syllableDots, onTTS }) 
 
         {result && !result.error && (
           <div className="flex items-center gap-2 flex-wrap">
-            {/* F7: TTS play button — calls /tts (Day 4 spec) */}
+            {/* F7: TTS play / stop button */}
             <button
               id="tts-play-btn"
-              onClick={handleTTSClick}
-              disabled={ttsPlaying}
+              onClick={ttsPlaying ? handleTTSStop : handleTTSClick}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
                 ${ttsPlaying
-                  ? 'bg-blue-100 text-blue-700 cursor-wait'
+                  ? 'bg-red-500 text-white hover:bg-red-600'
                   : 'bg-blue-600 text-white hover:bg-navy'
                 }`}
-              aria-label="Play text-to-speech"
-              title="Read simplified text aloud (Bangla TTS)"
+              aria-label={ttsPlaying ? 'Stop text-to-speech' : 'Play text-to-speech'}
+              title={ttsPlaying ? 'Stop reading' : 'Read simplified text aloud (Bangla TTS)'}
             >
-              {/* Speaker icon */}
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-                <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 011.415 0A5.983 5.983 0 0115 10a5.984 5.984 0 01-1.757 4.243 1 1 0 01-1.415-1.415A3.984 3.984 0 0013 10a3.983 3.983 0 00-1.172-2.828 1 1 0 010-1.415z" clipRule="evenodd" />
-              </svg>
-              {ttsPlaying ? 'Playing...' : 'Listen'}
+              {ttsPlaying ? (
+                /* Stop icon */
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                  <rect x="5" y="5" width="10" height="10" rx="1" />
+                </svg>
+              ) : (
+                /* Speaker icon */
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                  <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 011.415 0A5.983 5.983 0 0115 10a5.984 5.984 0 01-1.757 4.243 1 1 0 01-1.415-1.415A3.984 3.984 0 0013 10a3.983 3.983 0 00-1.172-2.828 1 1 0 010-1.415z" clipRule="evenodd" />
+                </svg>
+              )}
+              {ttsPlaying ? 'Stop' : 'Listen'}
             </button>
 
             {/* F8: Copy to clipboard */}

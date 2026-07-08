@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import InputPanel from './components/InputPanel';
 import ControlPanel from './components/ControlPanel';
 import OutputPanel from './components/OutputPanel';
@@ -99,8 +99,11 @@ function App() {
   }, [syllableDots]);
 
   // F7: TTS play button — calls /tts endpoint (Member C, Day 2)
+  // Returns the Audio object so OutputPanel can track onended and call stop()
+  const ttsAudioRef = useRef(null);
+
   const handleTTS = useCallback(async () => {
-    if (!result?.simplified_text) return;
+    if (!result?.simplified_text) return null;
     try {
       const response = await fetch(`${API_BASE}/tts`, {
         method: 'POST',
@@ -111,14 +114,25 @@ function App() {
         const blob = await response.blob();
         const url = URL.createObjectURL(blob);
         const audio = new Audio(url);
+        ttsAudioRef.current = audio;
         audio.play();
+        return audio;
       } else {
         console.error('TTS endpoint error');
       }
     } catch (error) {
       console.error('TTS API Error:', error);
     }
+    return null;
   }, [result]);
+
+  const handleTTSStop = useCallback(() => {
+    if (ttsAudioRef.current) {
+      ttsAudioRef.current.pause();
+      ttsAudioRef.current.currentTime = 0;
+      ttsAudioRef.current = null;
+    }
+  }, []);
 
   // Update CSS custom property --font-size in real time — F6 spec
   const handleFontSizeChange = useCallback((size) => {
@@ -156,7 +170,29 @@ function App() {
             lineShade={lineShade}
             setLineShade={setLineShade}
             syllableDots={syllableDots}
-            setSyllableDots={setSyllableDots}
+            setSyllableDots={async (value) => {
+              setSyllableDots(value);
+              // If toggling ON after simplification is already done, fetch syllabified text now
+              if (value && result?.simplified_text && !result?.syllabified_text) {
+                try {
+                  const syllRes = await fetch(`${API_BASE}/syllabify`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: result.simplified_text }),
+                  });
+                  if (syllRes.ok) {
+                    const syllData = await syllRes.json();
+                    setResult((prev) => ({ ...prev, syllabified_text: syllData.syllabified_text }));
+                  }
+                } catch {
+                  // fail silently — stretch feature
+                }
+              }
+              // If toggling OFF, clear syllabified_text so it reverts immediately
+              if (!value && result?.syllabified_text) {
+                setResult((prev) => ({ ...prev, syllabified_text: null }));
+              }
+            }}
           />
         </div>
 
@@ -167,6 +203,7 @@ function App() {
             lineShade={lineShade}
             syllableDots={syllableDots}
             onTTS={handleTTS}
+            onTTSStop={handleTTSStop}
           />
         </div>
       </main>
