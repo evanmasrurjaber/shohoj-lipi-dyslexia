@@ -29,4 +29,4 @@ COPY --chown=user data/ data/
 
 EXPOSE 7860
 
-CMD ["bash", "-c", "echo '===== STARTING DOCKER CONTAINER =====' && uvicorn backend.main:app --host 0.0.0.0 --port 7860 --log-level debug"]
+CMD ["python", "-m", "uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "7860"]
