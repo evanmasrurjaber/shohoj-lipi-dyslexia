@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import InputPanel from './components/InputPanel';
 import ControlPanel from './components/ControlPanel';
 import OutputPanel from './components/OutputPanel';
@@ -7,6 +7,30 @@ import OutputPanel from './components/OutputPanel';
 const API_BASE = 'http://localhost:8001';
 
 function App() {
+  // Cooldown state
+  const [cooldownTimeLeft, setCooldownTimeLeft] = useState(0);
+  const cooldownTimerRef = useRef(null);
+
+  const startCooldown = useCallback(() => {
+    if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current);
+    setCooldownTimeLeft(30);
+    cooldownTimerRef.current = setInterval(() => {
+      setCooldownTimeLeft(prev => {
+        if (prev <= 1) {
+          clearInterval(cooldownTimerRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current);
+    };
+  }, []);
+
   // F6: Font & Layout Controls — React state → CSS custom properties
   const [fontSize, setFontSize] = useState(20);
   const [lineShade, setLineShade] = useState(false);
@@ -15,19 +39,12 @@ function App() {
   // Pipeline state
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState(null);
-  // result shape: {
-  //   original_text: string,
-  //   simplified_text: string,
-  //   before_score: number,
-  //   before_tier: string,       // 'Easy' | 'Medium' | 'Hard'
-  //   after_score: number,
-  //   after_tier: string,
-  //   syllabified_text: string | null,
-  // }
 
   // Day 4: Wire the full flow: submit → /classify (before) → /simplify → /classify (after)
   // Day 4 spec: single /process endpoint returning {before_score, before_tier, simplified_text, after_score, after_tier}
   const handleSimplify = useCallback(async (text) => {
+    if (cooldownTimeLeft > 0) return;
+
     setIsLoading(true);
     setResult(null);
 
@@ -87,7 +104,8 @@ function App() {
     }
 
     setIsLoading(false);
-  }, [syllableDots]);
+    startCooldown();
+  }, [syllableDots, cooldownTimeLeft, startCooldown]);
 
   // F7: TTS play button — calls /tts endpoint (Member C, Day 2)
   // Returns the Audio object so OutputPanel can track onended and call stop()
@@ -176,7 +194,11 @@ function App() {
       <main className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* InputPanel — F1 */}
         <div className="lg:col-span-4">
-          <InputPanel onSubmit={handleSimplify} isLoading={isLoading} />
+          <InputPanel 
+            onSubmit={handleSimplify} 
+            isLoading={isLoading} 
+            cooldownTimeLeft={cooldownTimeLeft} 
+          />
         </div>
 
         {/* ControlPanel — F6 */}

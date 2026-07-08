@@ -4,11 +4,11 @@ import { useState } from 'react';
 // - Paste box with char counter warning at 2,000 chars
 // - Submit button with bg-navy hover state (Day 2 spec)
 // - Loading spinner (Day 3 spec)
-export default function InputPanel({ onSubmit, isLoading }) {
+export default function InputPanel({ onSubmit, isLoading, cooldownTimeLeft = 0 }) {
   const [text, setText] = useState('');
 
   const handleSubmit = () => {
-    if (text.trim().length > 0 && text.length <= 2000) {
+    if (text.trim().length > 0 && text.length <= 2000 && cooldownTimeLeft === 0) {
       onSubmit(text);
     }
   };
@@ -36,13 +36,13 @@ export default function InputPanel({ onSubmit, isLoading }) {
             ? 'border-red-400 focus:border-red-500'
             : 'border-gray-200 focus:border-blue-500'
           }
-          ${isLoading ? 'bg-gray-50 cursor-not-allowed' : 'bg-white'}
+          ${isLoading || cooldownTimeLeft > 0 ? 'bg-gray-50 cursor-not-allowed' : 'bg-white'}
         `}
         placeholder="এখানে বাংলা লেখা পেস্ট করুন... (Paste Bangla text here)"
         value={text}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={handleKeyDown}
-        disabled={isLoading}
+        disabled={isLoading || cooldownTimeLeft > 0}
         aria-label="Bangla text input"
         aria-describedby="char-counter"
         style={{ minHeight: '300px' }}
@@ -62,7 +62,7 @@ export default function InputPanel({ onSubmit, isLoading }) {
         <button
           id="simplify-btn"
           onClick={handleSubmit}
-          disabled={isLoading || isEmpty || isOverLimit}
+          disabled={isLoading || isEmpty || isOverLimit || cooldownTimeLeft > 0}
           className="px-6 py-2 bg-blue-600 text-white font-bold rounded-lg
             hover:bg-navy transition-colors
             disabled:bg-gray-400 disabled:cursor-not-allowed
@@ -90,7 +90,11 @@ export default function InputPanel({ onSubmit, isLoading }) {
               />
             </svg>
           )}
-          {isLoading ? 'Processing...' : 'Simplify →'}
+          {isLoading 
+            ? 'Processing...' 
+            : cooldownTimeLeft > 0 
+              ? `Wait ${cooldownTimeLeft}s` 
+              : 'Simplify →'}
         </button>
       </div>
 

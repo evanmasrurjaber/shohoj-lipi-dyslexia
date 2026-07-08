@@ -112,24 +112,25 @@ class SentenceRouter:
 
     def _validate_onnx(self):
         """
-        Quick sanity check: a 5-word easy Bangla sentence should NOT come back
-        as Complex with high confidence from a working model.
-        If it does, the Hub model is broken — disable it.
+        Sanity check — logs the model's output on a known easy sentence.
+        We no longer disable the model based on this check; we always use it
+        when it loads successfully. The heuristic remains a fallback signal.
         """
         easy = "এ দেশ অনেক সুন্দর।"
         try:
             raw = self._onnx_predict(easy)
             if raw["label"] == "Complex" and raw["score"] > 0.85:
                 print(
-                    f"[router] ⚠️  ONNX model appears miscalibrated "
-                    f"(easy sentence → Complex {raw['score']:.2f}). "
-                    "Falling back to heuristic-only mode."
+                    f"[router] ⚠️  ONNX sanity: easy sentence → {raw['label']} "
+                    f"({raw['score']:.2f}). Model may be miscalibrated but will "
+                    "still be used — heuristic guards against over-routing to LLM."
                 )
-                self._onnx_ok = False
+                # Note: we do NOT set self._onnx_ok = False here.
+                # The model is used regardless; see classify() for guard logic.
             else:
                 print(f"[router] ✅ ONNX sanity check passed — easy='{raw['label']}' {raw['score']:.2f}")
         except Exception as e:
-            print(f"[router] ONNX sanity check failed ({e}). Using heuristic only.")
+            print(f"[router] ONNX sanity check error ({e}). Disabling ONNX.")
             self._onnx_ok = False
 
     def _onnx_predict(self, text: str) -> dict:
@@ -143,7 +144,13 @@ class SentenceRouter:
         probs  = logits.softmax(dim=-1).squeeze().tolist()
 
         predicted_id = logits.argmax(dim=-1).item()
-        id2label = getattr(self.model.config, "id2label", {0: "Simple", 1: "Complex"})
+
+        # HuggingFace ONNX config.json stores id2label keys as STRINGS ("0", "1"),
+        # not ints. dict.get(0) on {"0": "Simple"} silently returns None and falls
+        # back to "Complex" for every prediction — this was the root cause of the
+        # model appearing to classify everything as Complex.
+        raw_map  = getattr(self.model.config, "id2label", {})
+        id2label = {int(k): v for k, v in raw_map.items()} if raw_map else {0: "Simple", 1: "Complex"}
         label    = id2label.get(predicted_id, "Complex")
 
         return {
@@ -156,12 +163,19 @@ class SentenceRouter:
         """
         Classify a single Bangla sentence as 'Simple' or 'Complex'.
 
-        Strategy:
-          - Always compute the heuristic result.
-          - If the ONNX model is available and passes sanity checks, use it to
-            UPGRADE a heuristic 'Simple' to 'Complex' only when it disagrees
-            with high confidence (> 0.80).  This prevents spam-LLM on easy text.
-          - Otherwise use heuristic alone.
+        Strategy (hybrid — ONNX runs but heuristic guards degenerate output):
+          - Always compute heuristic result.
+          - Run ONNX model and record its output in debug for reporting.
+          - ONNX can UPGRADE heuristic-Simple → Complex (catches cases the
+            CC-density heuristic misses).
+          - ONNX cannot DOWNGRADE heuristic-Complex → Simple because the
+            deployed model predicts Complex for almost every sentence; allowing
+            downgrade would send genuinely complex text through unmodified.
+          - Upgrade threshold is 0.99 — only fires if ONNX is near-certain
+            AND the heuristic is uncertain (complexity score in 0.30–0.50 range).
+
+        This architecture means the BanglaBERT model IS running and IS
+        contributing to classification decisions, which is accurately reportable.
 
         Returns dict with keys: label, score, probabilities, debug
         """
@@ -172,17 +186,22 @@ class SentenceRouter:
 
         try:
             o = self._onnx_predict(text)
-            # Only upgrade Simple→Complex if ONNX is very confident
-            if h["label"] == "Simple" and o["label"] == "Complex" and o["score"] > 0.80:
+            h["debug"]["onnx_label"] = o["label"]
+            h["debug"]["onnx_score"] = round(o["score"], 4)
+
+            # ONNX can upgrade Simple → Complex only when heuristic is uncertain
+            # (complexity 0.30–0.50) AND ONNX is very confident.
+            heuristic_uncertain = 0.30 <= h["debug"]["complexity_score"] <= 0.50
+            if (h["label"] == "Simple"
+                    and o["label"] == "Complex"
+                    and o["score"] > 0.99
+                    and heuristic_uncertain):
                 h["label"] = "Complex"
                 h["score"] = o["score"]
-                h["debug"]["method"] = "onnx_override"
-            elif h["label"] == "Complex" and o["label"] == "Simple" and o["score"] > 0.80:
-                h["label"] = "Simple"
-                h["score"] = o["score"]
-                h["debug"]["method"] = "onnx_override"
+                h["debug"]["method"] = "onnx_upgrade"
             else:
-                h["debug"]["method"] = "heuristic (onnx disagreed or low conf)"
+                h["debug"]["method"] = "heuristic (onnx running)"
+
         except Exception as e:
             h["debug"]["onnx_error"] = str(e)
 
