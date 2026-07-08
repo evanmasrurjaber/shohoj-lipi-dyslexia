@@ -1,13 +1,3 @@
-<<<<<<< HEAD
----
-title: Shohoj Lipi Backend
-emoji: 🚀
-colorFrom: blue
-colorTo: indigo
-sdk: docker
-pinned: false
----
-
 # Shohoj Lipi Backend
 FastAPI backend for Shohoj Lipi, deployed via Docker.
 =======
@@ -138,4 +128,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 [^1]: Muzahid Ali et al., "Prevalence of Dyslexia in Primary School in Dhaka," *International Journal of Advanced Research*, 2015 ([journalijar.com](https://www.journalijar.com/article/7418/prevalence-of-dyslexia-in-primary-school-in-dhaka:-its-effects-on-children%E2%80%99s-academic-and-social-life/)); global figure from "Prevalence of Developmental Dyslexia in Primary School Children: A Systematic Review and Meta-Analysis," 2022 ([PMC8870220](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8870220/)).
->>>>>>> origin/anjir
