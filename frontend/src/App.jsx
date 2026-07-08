@@ -10,7 +10,7 @@ function App() {
   // F6: Font & Layout Controls — React state → CSS custom properties
   const [fontSize, setFontSize] = useState(20);
   const [lineShade, setLineShade] = useState(false);
-  const [syllableDots, setSyllableDots] = useState(false);
+  const [syllableDots, _setSyllableDots] = useState(false);
 
   // Pipeline state
   const [isLoading, setIsLoading] = useState(false);
@@ -46,7 +46,7 @@ function App() {
         let syllabified_text = null;
 
         // F5 stretch: call /syllabify if syllable dots are enabled
-        if (syllableDots) {
+        if (syllableDots) { // eslint-disable-line react-hooks/exhaustive-deps
           try {
             const syllRes = await fetch(`${API_BASE}/syllabify`, {
               method: 'POST',
@@ -78,21 +78,12 @@ function App() {
         setResult({ error: errData.detail || 'Server error. Please try again.' });
       }
     } catch (error) {
-      console.error('API Error (backend may not be running):', error);
-      // Fallback mock for frontend-only testing — backends not ready yet
-      setTimeout(() => {
-        setResult({
-          original_text: text,
-          simplified_text: text, // pass-through until backend is up
-          before_score: 8.5,
-          before_tier: 'Hard',
-          after_score: 4.2,
-          after_tier: 'Easy',
-          syllabified_text: null,
-        });
-        setIsLoading(false);
-      }, 1200);
-      return;
+      console.error('API Error:', error);
+      // Show a real error — not mock data that hides the problem
+      setResult({
+        error: 'Cannot reach the backend server. Make sure it is running on port 8001.\n' +
+               `(${error?.message || error})`,
+      });
     }
 
     setIsLoading(false);
@@ -115,7 +106,9 @@ function App() {
         const url = URL.createObjectURL(blob);
         const audio = new Audio(url);
         ttsAudioRef.current = audio;
-        audio.play();
+        // Do NOT call audio.play() here — OutputPanel attaches onended/onerror
+        // BEFORE calling play() to avoid the race condition where audio ends
+        // before the handler is wired up (button stuck on "Stop").
         return audio;
       } else {
         console.error('TTS endpoint error');
@@ -133,6 +126,30 @@ function App() {
       ttsAudioRef.current = null;
     }
   }, []);
+
+  // Syllable dots toggle — fetches /syllabify on-demand if toggled on after simplification
+  const handleSyllableDotsToggle = useCallback(async (value) => {
+    _setSyllableDots(value);
+    if (value && result?.simplified_text && !result?.syllabified_text) {
+      try {
+        const syllRes = await fetch(`${API_BASE}/syllabify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: result.simplified_text }),
+        });
+        if (syllRes.ok) {
+          const syllData = await syllRes.json();
+          setResult((prev) => ({ ...prev, syllabified_text: syllData.syllabified_text }));
+        }
+      } catch {
+        // fail silently — stretch feature
+      }
+    }
+    // Toggling OFF: clear syllabified_text so output reverts immediately
+    if (!value && result?.syllabified_text) {
+      setResult((prev) => ({ ...prev, syllabified_text: null }));
+    }
+  }, [result]);
 
   // Update CSS custom property --font-size in real time — F6 spec
   const handleFontSizeChange = useCallback((size) => {
@@ -170,29 +187,7 @@ function App() {
             lineShade={lineShade}
             setLineShade={setLineShade}
             syllableDots={syllableDots}
-            setSyllableDots={async (value) => {
-              setSyllableDots(value);
-              // If toggling ON after simplification is already done, fetch syllabified text now
-              if (value && result?.simplified_text && !result?.syllabified_text) {
-                try {
-                  const syllRes = await fetch(`${API_BASE}/syllabify`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text: result.simplified_text }),
-                  });
-                  if (syllRes.ok) {
-                    const syllData = await syllRes.json();
-                    setResult((prev) => ({ ...prev, syllabified_text: syllData.syllabified_text }));
-                  }
-                } catch {
-                  // fail silently — stretch feature
-                }
-              }
-              // If toggling OFF, clear syllabified_text so it reverts immediately
-              if (!value && result?.syllabified_text) {
-                setResult((prev) => ({ ...prev, syllabified_text: null }));
-              }
-            }}
+            setSyllableDots={handleSyllableDotsToggle}
           />
         </div>
 
