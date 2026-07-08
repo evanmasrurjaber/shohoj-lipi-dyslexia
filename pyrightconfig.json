@@ -1,7 +1,0 @@
-{
-  "extraPaths": [
-    ".",
-    "./backend",
-    "./ml"
-  ]
-}
