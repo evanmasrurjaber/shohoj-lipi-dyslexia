@@ -24,10 +24,14 @@ from fastapi.requests import Request
 from gtts import gTTS
 import io
 
+print("[main] Starting global imports...")
+
 # ✅ app is created FIRST before anything uses it
 app = FastAPI()
-tokenizer = NLTKTokenizer()
+tokenizer = None
 router = None
+
+print("[main] Global scope initialized. Waiting for Uvicorn startup hook...")
 
 
 class TextInput(BaseModel):
@@ -65,11 +69,14 @@ app.add_middleware(
 
 @app.on_event("startup")
 def load_models():
-    global router
+    global router, tokenizer
     import nltk
+    from bnlp import NLTKTokenizer
     print("Downloading NLTK data (punkt_tab)...")
     nltk.download("punkt_tab", quiet=True)
     nltk.download("punkt", quiet=True)
+    print("Initializing NLTKTokenizer...")
+    tokenizer = NLTKTokenizer()
     print("Loading readability scorer resources...")
     init_scorer()
     print("Loading sentence router model...")
