@@ -1,6 +1,3 @@
-# Shohoj Lipi Backend
-FastAPI backend for Shohoj Lipi, deployed via Docker.
-=======
 # Shohoj Lipi (সহজ লিপি)
 
 **Enhancing Bangla Text Accessibility for Dyslexic Readers through LLM-Driven Simplification and Adaptive Typography**
