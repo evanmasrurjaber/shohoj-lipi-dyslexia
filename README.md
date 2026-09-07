@@ -1,12 +1,15 @@
 # Shohoj Lipi (সহজ লিপি)
 
+### 🌐 Live Demo
+**Link: [shohoj-lipi.vercel.app](https://shohoj-lipi.vercel.app/)**
+
 **Enhancing Bangla Text Accessibility for Dyslexic Readers through LLM-Driven Simplification and Adaptive Typography**
 
-A submission for the SciBlitz AI Challenge 2026 (IEEE CUET), Track C: Education & Accessibility. Shohoj Lipi takes any Bangla text and transforms it into a dyslexia-friendly reading experience: it scores how difficult the text is, simplifies the complex parts with an LLM, and re-renders the result in an accessible layout, with a before/after readability score to show the improvement is real.
+A submission for the SciBlitz AI Challenge 2026 (IEEE CUET), Track C: Education & Accessibility. Shohoj Lipi takes any Bangla text and transforms it into a dyslexia friendly reading experience: it scores how difficult the text is, simplifies the complex parts with an LLM, and re-renders the result in an accessible layout, with a before/after readability score to show the improvement is real.
 
 ## Inspiration
 
-Standard Bangla typography is hard on readers with dyslexia: dense conjunct consonants, tight character spacing, serif-heavy fonts, and long unbroken sentences create visual crowding. A 2015 Dhaka study found a 9.02% dyslexia prevalence rate among grade-4 students (n=133); a 2022 global meta-analysis found a pooled prevalence of 7.10% (95% CI 6.27-7.97%).[^1] No accessible, AI-powered Bangla reading tool currently exists.
+Standard Bangla typography is hard on readers with dyslexia: dense conjunct consonants, tight character spacing, serif-heavy fonts, and long unbroken sentences create visual crowding. A 2015 Dhaka study found a 9.02% dyslexia prevalence rate among grade-4 students (n=133); a 2022 global meta-analysis found a pooled prevalence of 7.10% (95% CI 6.27-7.97%). No accessible, AI-powered Bangla reading tool currently exists.
 
 The closest published work, the AAAI 2021 *BengaliReadability* paper (Chakraborty et al.), provides only a readability classifier — no simplification, no rendering. Shohoj Lipi combines readability scoring, LLM-based simplification, and accessible rendering into one pipeline.
 
@@ -114,7 +117,7 @@ Implemented: FastAPI backend with all core endpoints, the rule-based readability
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is intended for academic and portfolio purposes.
 
 ## Acknowledgements
 
