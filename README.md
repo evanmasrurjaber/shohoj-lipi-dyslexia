@@ -1,11 +1,11 @@
 # Shohoj Lipi (সহজ লিপি)
 
-### 🌐 Live Demo
-**Link: [shohoj-lipi.vercel.app](https://shohoj-lipi.vercel.app/)**
-
 **Enhancing Bangla Text Accessibility for Dyslexic Readers through LLM-Driven Simplification and Adaptive Typography**
 
 A submission for the SciBlitz AI Challenge 2026 (IEEE CUET), Track C: Education & Accessibility. Shohoj Lipi takes any Bangla text and transforms it into a dyslexia friendly reading experience: it scores how difficult the text is, simplifies the complex parts with an LLM, and re-renders the result in an accessible layout, with a before/after readability score to show the improvement is real.
+
+### 🌐 Live Demo
+**Link: [shohoj-lipi.vercel.app](https://shohoj-lipi.vercel.app/)**
 
 ## Inspiration
 
